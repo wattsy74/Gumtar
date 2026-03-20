@@ -164,7 +164,7 @@
     <div id="wsWarning">
       <strong>&#9888; Web Serial API not available</strong>
       <p>This app requires <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> (version 89+) with the Web Serial API enabled. Firefox and Safari are not supported.</p>
-      <p style="margin-top:6px">Enable flag: <code>chrome://flags/#enable-experimental-web-platform-features</code></p>
+      <p style="margin-top:6px">Web Serial is enabled by default in Chrome/Edge 89+. For older versions only: <code>chrome://flags/#enable-experimental-web-platform-features</code></p>
     </div>
 
     <!-- ── STATUS panel ── -->
@@ -420,8 +420,8 @@ const state = {
     whammyMin: 0, whammyMax: 1023, whammyDeadzone: 10,
     tiltInvert: false, numLeds: 5, ledEffect: 0,
     leds: Array.from({length:8}, (_,i) => {
-      const colours = ['#00ff00','#ff0000','#ffff00','#0000ff','#ff6600','#00ff00','#ff0000','#ffff00'];
-      return hexToRgb(colours[i]);
+      const colors = ['#00ff00','#ff0000','#ffff00','#0000ff','#ff6600','#00ff00','#ff0000','#ffff00'];
+      return hexToRgb(colors[i]);
     }),
     buttonMap: [0,1,2,3,4,255,255,6,7,255,255,255,255,8,5]
   }
@@ -740,6 +740,7 @@ document.getElementById('btnApplyMap').addEventListener('click', () => {
 
 document.getElementById('btnSaveMap').addEventListener('click', () => {
   document.getElementById('btnApplyMap').click();
+  // Allow 50 ms per command for serial round-trip, plus 200 ms base margin before saving
   setTimeout(() => sendCmd({cmd: 'save_config'}), BTN_NAMES.length * 50 + 200);
 });
 

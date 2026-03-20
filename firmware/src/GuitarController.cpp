@@ -278,7 +278,7 @@ void GuitarController::handleCommand(JsonObject cmd) {
     } else if (strcmp_P(command, PSTR("reboot")) == 0) {
         _serial.sendAck("reboot", true);
         delay(100);
-        // AVR soft reset via watchdog
+        // Trigger AVR soft-reset: watchdog fires after 15 ms, bootloader resets MCU
         wdt_enable(WDTO_15MS);
         while (true) {}
 
