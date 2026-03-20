@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gumtar — Guitar Controller Config</title>
+<style>
+  /* ── Reset & base ─────────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:       #0d0d0f;
+    --surface:  #1a1a1f;
+    --border:   #2d2d38;
+    --text:     #e0e0e8;
+    --muted:    #7a7a8a;
+    --green:    #39ff14;
+    --red:      #ff2244;
+    --yellow:   #ffe600;
+    --blue:     #00aaff;
+    --orange:   #ff7700;
+    --accent:   #39ff14;
+    --input-bg: #111116;
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; }
+  h1, h2, h3 { font-weight: 600; }
+  button { cursor: pointer; border: none; border-radius: 6px; padding: 7px 16px; font-size: 13px; font-weight: 600; transition: filter 0.15s; }
+  button:hover { filter: brightness(1.15); }
+  button:active { filter: brightness(0.9); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
+  input[type=range] { accent-color: var(--accent); width: 100%; }
+  input[type=number], input[type=text], select {
+    background: var(--input-bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 5px; padding: 5px 9px; font-size: 13px; width: 100%;
+  }
+  input[type=color] { border: none; padding: 0; width: 44px; height: 28px; border-radius: 4px; cursor: pointer; background: none; }
+  label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 3px; }
+  a { color: var(--accent); text-decoration: none; }
+
+  /* ── Layout ───────────────────────────────────────────────────────────── */
+  #app { display: flex; flex-direction: column; height: 100vh; }
+  #header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  #header h1 { font-size: 20px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; }
+  #header h1 span { color: var(--red); }
+  .conn-row { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+  #btnConnect  { background: var(--accent); color: #000; }
+  #btnDisconnect { background: var(--red); color: #fff; display: none; }
+  #connStatus { font-size: 12px; color: var(--muted); }
+
+  /* ── Tabs ─────────────────────────────────────────────────────────────── */
+  #tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; }
+  .tab { padding: 10px 20px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); font-size: 13px; font-weight: 600; white-space: nowrap; transition: color 0.15s, border-color 0.15s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Content ──────────────────────────────────────────────────────────── */
+  #content { flex: 1; overflow-y: auto; padding: 20px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  .card h3 { margin-bottom: 12px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 600px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+
+  /* ── Status panel ─────────────────────────────────────────────────────── */
+  .btn-indicator {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .btn-dot {
+    width: 34px; height: 34px; border-radius: 50%; background: #222;
+    border: 2px solid var(--border); transition: background 0.08s, box-shadow 0.08s;
+    display: flex; align-items: center; justify-content: center; font-size: 9px; color: #555;
+  }
+  .btn-dot.on { box-shadow: 0 0 10px currentColor; }
+  .btn-dot.green.on  { background: var(--green);  color: #000; border-color: var(--green); }
+  .btn-dot.red.on    { background: var(--red);    color: #fff; border-color: var(--red); }
+  .btn-dot.yellow.on { background: var(--yellow); color: #000; border-color: var(--yellow); }
+  .btn-dot.blue.on   { background: var(--blue);   color: #000; border-color: var(--blue); }
+  .btn-dot.orange.on { background: var(--orange); color: #000; border-color: var(--orange); }
+  .btn-dot.white.on  { background: #fff; color: #000; border-color: #fff; }
+  .btn-dot.gray.on   { background: #888; color: #000; border-color: #888; }
+  .gauge-row { display: flex; align-items: center; gap: 10px; }
+  .gauge { flex: 1; height: 14px; background: #111; border-radius: 7px; overflow: hidden; border: 1px solid var(--border); }
+  .gauge-fill { height: 100%; background: linear-gradient(90deg, var(--orange), var(--yellow)); border-radius: 7px; transition: width 0.08s; }
+  .tilt-indicator { width: 40px; height: 40px; background: #222; border: 2px solid var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: background 0.1s; }
+  .tilt-indicator.on { background: var(--yellow); border-color: var(--yellow); }
+  .hat-display { display: grid; grid-template-columns: repeat(3,28px); grid-template-rows: repeat(3,28px); gap: 2px; }
+  .hat-cell { background: #222; border-radius: 3px; }
+  .hat-cell.on { background: var(--accent); }
+
+  /* ── LED panel ────────────────────────────────────────────────────────── */
+  #ledStrip { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .led-swatch { width: 40px; height: 40px; border-radius: 6px; border: 2px solid var(--border); cursor: pointer; transition: border-color 0.15s; }
+  .led-swatch.selected { border-color: var(--accent); }
+  #ledColorRow { display: flex; align-items: center; gap: 12px; padding: 12px; background: #111; border-radius: 8px; }
+  #ledColorPicker { width: 60px; height: 40px; }
+
+  /* ── Whammy panel ─────────────────────────────────────────────────────── */
+  .range-row { display: flex; align-items: center; gap: 10px; }
+  .range-row span { min-width: 36px; text-align: right; font-size: 13px; color: var(--yellow); }
+
+  /* ── Buttons mapping panel ────────────────────────────────────────────── */
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  td input[type=number] { width: 70px; }
+  .color-chip { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+
+  /* ── Log ──────────────────────────────────────────────────────────────── */
+  #log { font-family: 'Courier New', monospace; font-size: 11px; background: #070709; border: 1px solid var(--border); border-radius: 6px; padding: 10px; max-height: 140px; overflow-y: auto; color: #6dff6d; }
+  .log-err { color: var(--red); }
+  .log-in  { color: var(--blue); }
+
+  /* ── Footer ───────────────────────────────────────────────────────────── */
+  #footer { background: var(--surface); border-top: 1px solid var(--border); padding: 8px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #statusMsg { font-size: 12px; color: var(--muted); flex: 1; }
+  #btnSave { background: var(--accent); color: #000; }
+  .btn-secondary { background: var(--border); color: var(--text); }
+  .btn-danger { background: var(--red); color: #fff; }
+
+  /* ── Web Serial warning ───────────────────────────────────────────────── */
+  #wsWarning { display: none; background: #2a0a0a; border: 1px solid var(--red); border-radius: 8px; padding: 16px; margin-bottom: 16px; color: var(--red); }
+  #wsWarning p { margin-top: 6px; color: var(--text); font-size: 13px; }
+
+  /* ── Misc ─────────────────────────────────────────────────────────────── */
+  .row { display: flex; align-items: center; gap: 10px; }
+  .mt8 { margin-top: 8px; }
+  .mb8 { margin-bottom: 8px; }
+  .fret-green  { color: var(--green); }
+  .fret-red    { color: var(--red); }
+  .fret-yellow { color: var(--yellow); }
+  .fret-blue   { color: var(--blue); }
+  .fret-orange { color: var(--orange); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Header ── -->
+  <div id="header">
+    <h1>GUM<span>TAR</span></h1>
+    <div style="font-size:11px;color:var(--muted)">Guitar Controller Config</div>
+    <div class="conn-row">
+      <span id="connStatus">&#9679; Disconnected</span>
+      <button id="btnConnect">Connect</button>
+      <button id="btnDisconnect">Disconnect</button>
+    </div>
+  </div>
+
+  <!-- ── Tabs ── -->
+  <div id="tabs">
+    <div class="tab active" data-panel="status">Status</div>
+    <div class="tab" data-panel="leds">LEDs</div>
+    <div class="tab" data-panel="buttons">Buttons</div>
+    <div class="tab" data-panel="whammy">Whammy</div>
+    <div class="tab" data-panel="settings">Settings</div>
+    <div class="tab" data-panel="log">Log</div>
+  </div>
+
+  <!-- ── Content ── -->
+  <div id="content">
+
+    <!-- Web Serial warning -->
+    <div id="wsWarning">
+      <strong>&#9888; Web Serial API not available</strong>
+      <p>This app requires <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> (version 89+) with the Web Serial API enabled. Firefox and Safari are not supported.</p>
+      <p style="margin-top:6px">Enable flag: <code>chrome://flags/#enable-experimental-web-platform-features</code></p>
+    </div>
+
+    <!-- ── STATUS panel ── -->
+    <div class="panel active" id="panel-status">
+      <div class="card">
+        <h3>Fret Buttons</h3>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;padding:8px 0">
+          <div class="btn-indicator">
+            <div class="btn-dot green" id="dot-green">G</div>
+            <span class="fret-green" style="font-size:10px">Green</span>
+          </div>
+          <div class="btn-indicator">
+            <div class="btn-dot red" id="dot-red">R</div>
+            <span class="fret-red" style="font-size:10px">Red</span>
+          </div>
+          <div class="btn-indicator">
+            <div class="btn-dot yellow" id="dot-yellow">Y</div>
+            <span class="fret-yellow" style="font-size:10px">Yellow</span>
+          </div>
+          <div class="btn-indicator">
+            <div class="btn-dot blue" id="dot-blue">B</div>
+            <span class="fret-blue" style="font-size:10px">Blue</span>
+          </div>
+          <div class="btn-indicator">
+            <div class="btn-dot orange" id="dot-orange">O</div>
+            <span class="fret-orange" style="font-size:10px">Orange</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h3>Strum &amp; System</h3>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;padding:6px 0">
+            <div class="btn-indicator">
+              <div class="btn-dot white" id="dot-strum-up">&#9650;</div>
+              <span style="font-size:10px;color:var(--muted)">Up</span>
+            </div>
+            <div class="btn-indicator">
+              <div class="btn-dot white" id="dot-strum-down">&#9660;</div>
+              <span style="font-size:10px;color:var(--muted)">Down</span>
+            </div>
+            <div class="btn-indicator">
+              <div class="btn-dot gray" id="dot-start">ST</div>
+              <span style="font-size:10px;color:var(--muted)">Start</span>
+            </div>
+            <div class="btn-indicator">
+              <div class="btn-dot gray" id="dot-select">SE</div>
+              <span style="font-size:10px;color:var(--muted)">Select</span>
+            </div>
+            <div class="btn-indicator">
+              <div class="btn-dot gray" id="dot-menu">&#9776;</div>
+              <span style="font-size:10px;color:var(--muted)">Menu</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>D-Pad</h3>
+          <div style="display:flex;justify-content:center;padding:6px 0">
+            <div class="hat-display">
+              <div></div>
+              <div class="hat-cell" id="hat-up"></div>
+              <div></div>
+              <div class="hat-cell" id="hat-left"></div>
+              <div style="background:#333;border-radius:3px"></div>
+              <div class="hat-cell" id="hat-right"></div>
+              <div></div>
+              <div class="hat-cell" id="hat-down"></div>
+              <div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h3>Whammy</h3>
+          <div class="gauge-row">
+            <div class="gauge"><div class="gauge-fill" id="whammyGauge" style="width:0%"></div></div>
+            <span id="whammyVal" style="min-width:30px;text-align:right;font-size:13px;color:var(--orange)">0</span>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Tilt</h3>
+          <div style="display:flex;justify-content:center">
+            <div class="tilt-indicator" id="tiltIndicator">&#8599;</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin-top:4px">
+        <button id="btnRefreshStatus" class="btn-secondary" disabled>&#10227; Auto-refresh ON</button>
+      </div>
+    </div>
+
+    <!-- ── LEDs panel ── -->
+    <div class="panel" id="panel-leds">
+      <div class="card">
+        <h3>LED Strip</h3>
+        <div class="row mb8">
+          <label style="display:inline;margin:0">LEDs:</label>
+          <select id="ledCount" style="width:80px">
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            <option value="4">4</option><option value="5" selected>5</option><option value="6">6</option>
+            <option value="7">7</option><option value="8">8</option>
+          </select>
+          <label style="display:inline;margin:0">Effect:</label>
+          <select id="ledEffect">
+            <option value="solid">Solid</option>
+            <option value="pulse">Pulse</option>
+            <option value="rainbow">Rainbow</option>
+            <option value="strum_flash">Strum Flash</option>
+          </select>
+        </div>
+        <div id="ledStrip"></div>
+        <div id="ledColorRow" style="display:none">
+          <span id="ledColorLabel" style="min-width:60px;color:var(--muted)">LED 0</span>
+          <input type="color" id="ledColorPicker" value="#00ff00">
+          <button id="btnSetLed" style="background:var(--accent);color:#000">Set</button>
+          <button id="btnSetAllLed" class="btn-secondary">Set All</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="row">
+          <button id="btnApplyLeds" style="background:var(--blue);color:#000">Apply LEDs</button>
+          <button id="btnSaveLeds"  style="background:var(--accent);color:#000">Save to EEPROM</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Buttons panel ── -->
+    <div class="panel" id="panel-buttons">
+      <div class="card">
+        <h3>Button &rarr; HID Mapping</h3>
+        <table id="btnMapTable">
+          <thead><tr><th>Button</th><th style="color:var(--muted)">Key</th><th>HID Index</th><th>Note</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="row mt8">
+          <button id="btnApplyMap" style="background:var(--blue);color:#000">Apply Map</button>
+          <button id="btnSaveMap"  style="background:var(--accent);color:#000">Save to EEPROM</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Whammy panel ── -->
+    <div class="panel" id="panel-whammy">
+      <div class="card">
+        <h3>Whammy Calibration</h3>
+        <div style="margin-bottom:12px">
+          <label>Minimum (raw ADC)</label>
+          <div class="range-row">
+            <input type="range" id="whammyMin" min="0" max="1023" value="0">
+            <span id="whammyMinVal">0</span>
+          </div>
+        </div>
+        <div style="margin-bottom:12px">
+          <label>Maximum (raw ADC)</label>
+          <div class="range-row">
+            <input type="range" id="whammyMax" min="0" max="1023" value="1023">
+            <span id="whammyMaxVal">1023</span>
+          </div>
+        </div>
+        <div style="margin-bottom:16px">
+          <label>Deadzone (0&#8211;255)</label>
+          <div class="range-row">
+            <input type="range" id="whammyDead" min="0" max="255" value="10">
+            <span id="whammyDeadVal">10</span>
+          </div>
+        </div>
+        <div class="row">
+          <button id="btnApplyWhammy" style="background:var(--blue);color:#000">Apply</button>
+          <button id="btnCalibrateWhammy" style="background:var(--orange);color:#000">Auto Calibrate (5s)</button>
+          <button id="btnSaveWhammy"  style="background:var(--accent);color:#000">Save to EEPROM</button>
+        </div>
+        <div id="calibrateStatus" style="margin-top:8px;font-size:12px;color:var(--muted)"></div>
+      </div>
+    </div>
+
+    <!-- ── Settings panel ── -->
+    <div class="panel" id="panel-settings">
+      <div class="card">
+        <h3>USB Mode</h3>
+        <div style="margin-bottom:8px">
+          <label>Select Mode (requires reboot to take effect)</label>
+          <select id="modeSelect">
+            <option value="hid_pc">HID PC / Mac</option>
+            <option value="hid_ps3">HID PS3 (Guitar Hero Les Paul)</option>
+            <option value="xinput">Xbox XInput</option>
+          </select>
+        </div>
+        <button id="btnSetMode" style="background:var(--blue);color:#000">Set Mode</button>
+      </div>
+      <div class="card">
+        <h3>Tilt Axis</h3>
+        <div class="row">
+          <input type="checkbox" id="tiltInvert" style="width:auto">
+          <label style="display:inline;margin:0">Invert tilt axis</label>
+        </div>
+        <div class="mt8">
+          <button id="btnSetTilt" style="background:var(--blue);color:#000">Apply</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Danger Zone</h3>
+        <div class="row">
+          <button id="btnFactoryReset" class="btn-danger">Factory Reset</button>
+          <button id="btnReboot" class="btn-secondary">Reboot Device</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Log panel ── -->
+    <div class="panel" id="panel-log">
+      <div class="card">
+        <h3>Serial Log</h3>
+        <div id="log"></div>
+        <div class="row mt8">
+          <button id="btnClearLog" class="btn-secondary">Clear</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /#content -->
+
+  <!-- ── Footer ── -->
+  <div id="footer">
+    <span id="statusMsg">Not connected</span>
+    <button id="btnSave" disabled>&#128190; Save All to EEPROM</button>
+    <button id="btnGetConfig" class="btn-secondary" disabled>&#8595; Read Config</button>
+  </div>
+
+</div><!-- /#app -->
+
+<script>
+'use strict';
+
+// ── Web Serial availability check ────────────────────────────────────────────
+if (!('serial' in navigator)) {
+  document.getElementById('wsWarning').style.display = 'block';
+  document.getElementById('btnConnect').disabled = true;
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+const state = {
+  port: null,
+  reader: null,
+  writer: null,
+  connected: false,
+  statusInterval: null,
+  config: {
+    mode: 0,
+    whammyMin: 0, whammyMax: 1023, whammyDeadzone: 10,
+    tiltInvert: false, numLeds: 5, ledEffect: 0,
+    leds: Array.from({length:8}, (_,i) => {
+      const colours = ['#00ff00','#ff0000','#ffff00','#0000ff','#ff6600','#00ff00','#ff0000','#ffff00'];
+      return hexToRgb(colours[i]);
+    }),
+    buttonMap: [0,1,2,3,4,255,255,6,7,255,255,255,255,8,5]
+  }
+};
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+function rgbToHex(r, g, b) {
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+// ── Logging ──────────────────────────────────────────────────────────────────
+function logMsg(text, cls) {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + text;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+  if (el.children.length > 200) el.removeChild(el.firstChild);
+}
+function setStatus(msg) {
+  document.getElementById('statusMsg').textContent = msg;
+}
+
+// ── Connection ───────────────────────────────────────────────────────────────
+document.getElementById('btnConnect').addEventListener('click', async () => {
+  try {
+    state.port = await navigator.serial.requestPort();
+    await state.port.open({ baudRate: 115200 });
+    state.connected = true;
+
+    const encoder = new TextEncoderStream();
+    encoder.readable.pipeTo(state.port.writable);
+    state.writer = encoder.writable.getWriter();
+
+    readLoop();
+    onConnected();
+  } catch (e) {
+    logMsg('Connect error: ' + e.message, 'log-err');
+    setStatus('Connection failed');
+  }
+});
+
+document.getElementById('btnDisconnect').addEventListener('click', async () => {
+  await doDisconnect();
+});
+
+async function doDisconnect() {
+  clearInterval(state.statusInterval);
+  state.connected = false;
+  try {
+    if (state.reader) { await state.reader.cancel(); state.reader = null; }
+    if (state.writer) { await state.writer.close(); state.writer = null; }
+    if (state.port)   { await state.port.close();   state.port = null; }
+  } catch (_) {}
+  onDisconnected();
+}
+
+function onConnected() {
+  document.getElementById('btnConnect').style.display = 'none';
+  document.getElementById('btnDisconnect').style.display = '';
+  document.getElementById('connStatus').textContent = '\u25cf Connected';
+  document.getElementById('connStatus').style.color = 'var(--green)';
+  document.getElementById('btnSave').disabled = false;
+  document.getElementById('btnGetConfig').disabled = false;
+  document.getElementById('btnRefreshStatus').disabled = false;
+  setStatus('Connected \u2014 reading config\u2026');
+  logMsg('Connected');
+  state.statusInterval = setInterval(fetchStatus, 150);
+  sendCmd({cmd: 'get_config'});
+}
+
+function onDisconnected() {
+  document.getElementById('btnConnect').style.display = '';
+  document.getElementById('btnDisconnect').style.display = 'none';
+  document.getElementById('connStatus').textContent = '\u25cf Disconnected';
+  document.getElementById('connStatus').style.color = 'var(--muted)';
+  document.getElementById('btnSave').disabled = true;
+  document.getElementById('btnGetConfig').disabled = true;
+  document.getElementById('btnRefreshStatus').disabled = true;
+  setStatus('Disconnected');
+  logMsg('Disconnected', 'log-err');
+}
+
+// ── Serial read loop ─────────────────────────────────────────────────────────
+let _readBuf = '';
+
+async function readLoop() {
+  const decoder = new TextDecoderStream();
+  state.port.readable.pipeTo(decoder.writable);
+  state.reader = decoder.readable.getReader();
+
+  try {
+    while (true) {
+      const { value, done } = await state.reader.read();
+      if (done) break;
+      _readBuf += value;
+      let nl;
+      while ((nl = _readBuf.indexOf('\n')) !== -1) {
+        const line = _readBuf.slice(0, nl).trim();
+        _readBuf = _readBuf.slice(nl + 1);
+        if (line) handleResponse(line);
+      }
+    }
+  } catch (e) {
+    if (state.connected) {
+      logMsg('Read error: ' + e.message, 'log-err');
+      await doDisconnect();
+    }
+  }
+}
+
+// ── Send command ─────────────────────────────────────────────────────────────
+async function sendCmd(obj) {
+  if (!state.writer) return;
+  const line = JSON.stringify(obj) + '\n';
+  logMsg('\u2192 ' + line.trim(), 'log-in');
+  try { await state.writer.write(line); }
+  catch (e) { logMsg('Write error: ' + e.message, 'log-err'); }
+}
+
+// ── Handle responses ─────────────────────────────────────────────────────────
+function handleResponse(line) {
+  logMsg('\u2190 ' + line);
+  let obj;
+  try { obj = JSON.parse(line); } catch (_) { return; }
+
+  if (obj.type === 'status') {
+    updateStatusPanel(obj);
+  } else if (obj.type === 'config') {
+    applyConfig(obj);
+  } else if (obj.type === 'ack') {
+    setStatus(obj.cmd + ': ' + (obj.ok ? '\u2713' : '\u2717') + ' ' + (obj.msg || ''));
+    if (obj.cmd === 'factory_reset' || obj.cmd === 'reboot') {
+      sendCmd({cmd: 'get_config'});
+    }
+  }
+}
+
+// ── Status auto-fetch ────────────────────────────────────────────────────────
+function fetchStatus() {
+  if (document.getElementById('panel-status').classList.contains('active')) {
+    sendCmd({cmd: 'get_status'});
+  }
+}
+
+// ── Update status panel ──────────────────────────────────────────────────────
+const BTN_BITS = { green:0, red:1, yellow:2, blue:3, orange:4, tilt:5, start:6, select:7, menu:8 };
+
+function updateStatusPanel(s) {
+  const btns = s.buttons;
+  for (const [name, bit] of Object.entries(BTN_BITS)) {
+    const el = document.getElementById('dot-' + name);
+    if (el) el.classList.toggle('on', !!(btns & (1 << bit)));
+  }
+
+  const hat = s.hat;
+  const strumUp   = (hat === 0 || hat === 1 || hat === 7);
+  const strumDown = (hat === 4 || hat === 3 || hat === 5);
+  document.getElementById('dot-strum-up').classList.toggle('on', strumUp);
+  document.getElementById('dot-strum-down').classList.toggle('on', strumDown);
+
+  document.getElementById('hat-up').classList.toggle('on',    hat === 0 || hat === 1 || hat === 7);
+  document.getElementById('hat-right').classList.toggle('on', hat === 2 || hat === 1 || hat === 3);
+  document.getElementById('hat-down').classList.toggle('on',  hat === 4 || hat === 3 || hat === 5);
+  document.getElementById('hat-left').classList.toggle('on',  hat === 6 || hat === 5 || hat === 7);
+
+  const pct = Math.round((s.whammy / 255) * 100);
+  document.getElementById('whammyGauge').style.width = pct + '%';
+  document.getElementById('whammyVal').textContent = s.whammy;
+
+  document.getElementById('tiltIndicator').classList.toggle('on', s.tilt > 127);
+}
+
+// ── Apply config from device ─────────────────────────────────────────────────
+function applyConfig(cfg) {
+  state.config.mode           = cfg.mode;
+  state.config.whammyMin      = cfg.whammyMin;
+  state.config.whammyMax      = cfg.whammyMax;
+  state.config.whammyDeadzone = cfg.whammyDeadzone;
+  state.config.tiltInvert     = cfg.tiltInvert;
+  state.config.numLeds        = cfg.numLeds;
+  state.config.ledEffect      = cfg.ledEffect;
+
+  if (cfg.leds) {
+    state.config.leds = cfg.leds.map(l => ({ r: l.r || 0, g: l.g || 0, b: l.b || 0 }));
+  }
+  if (cfg.buttonMap) {
+    state.config.buttonMap = cfg.buttonMap;
+  }
+
+  populateLEDPanel();
+  populateButtonMap();
+  populateWhammyPanel();
+  populateSettingsPanel();
+  setStatus('Config loaded');
+}
+
+// ── LED Panel ────────────────────────────────────────────────────────────────
+let selectedLED = 0;
+
+function populateLEDPanel() {
+  const strip = document.getElementById('ledStrip');
+  const count = state.config.numLeds;
+  document.getElementById('ledCount').value = count;
+  const effectNames = ['solid', 'pulse', 'rainbow', 'strum_flash'];
+  document.getElementById('ledEffect').value = effectNames[state.config.ledEffect] || 'solid';
+
+  strip.innerHTML = '';
+  for (let i = 0; i < 8; i++) {
+    const c = state.config.leds[i] || {r: 0, g: 0, b: 0};
+    const sw = document.createElement('div');
+    sw.className = 'led-swatch';
+    sw.style.background = rgbToHex(c.r, c.g, c.b);
+    sw.style.opacity = i < count ? '1' : '0.3';
+    sw.title = 'LED ' + i;
+    sw.dataset.idx = i;
+    sw.addEventListener('click', () => selectLED(i));
+    strip.appendChild(sw);
+  }
+  selectLED(0);
+}
+
+function selectLED(i) {
+  selectedLED = i;
+  document.querySelectorAll('.led-swatch').forEach((s, idx) => s.classList.toggle('selected', idx === i));
+  const c = state.config.leds[i] || {r: 0, g: 0, b: 0};
+  document.getElementById('ledColorPicker').value = rgbToHex(c.r, c.g, c.b);
+  document.getElementById('ledColorLabel').textContent = 'LED ' + i;
+  document.getElementById('ledColorRow').style.display = '';
+}
+
+document.getElementById('ledCount').addEventListener('change', () => { populateLEDPanel(); });
+
+document.getElementById('ledColorPicker').addEventListener('input', e => {
+  const c = hexToRgb(e.target.value);
+  state.config.leds[selectedLED] = c;
+  document.querySelectorAll('.led-swatch')[selectedLED].style.background = e.target.value;
+});
+
+document.getElementById('btnSetLed').addEventListener('click', () => {
+  const c = state.config.leds[selectedLED];
+  sendCmd({cmd: 'set_led', index: selectedLED, r: c.r, g: c.g, b: c.b});
+});
+
+document.getElementById('btnSetAllLed').addEventListener('click', () => {
+  const hex = document.getElementById('ledColorPicker').value;
+  const c = hexToRgb(hex);
+  for (let i = 0; i < 8; i++) {
+    state.config.leds[i] = Object.assign({}, c);
+    document.querySelectorAll('.led-swatch')[i].style.background = hex;
+  }
+  sendCmd({cmd: 'set_leds', leds: state.config.leds});
+});
+
+document.getElementById('btnApplyLeds').addEventListener('click', () => {
+  const effect = document.getElementById('ledEffect').value;
+  const count  = parseInt(document.getElementById('ledCount').value);
+  state.config.numLeds = count;
+  state.config.ledEffect = ['solid', 'pulse', 'rainbow', 'strum_flash'].indexOf(effect);
+  sendCmd({cmd: 'set_led_effect', effect: effect});
+  sendCmd({cmd: 'set_leds', leds: state.config.leds.slice(0, count)});
+});
+
+document.getElementById('btnSaveLeds').addEventListener('click', () => {
+  document.getElementById('btnApplyLeds').click();
+  setTimeout(() => sendCmd({cmd: 'save_config'}), 200);
+});
+
+// ── Button Map Panel ─────────────────────────────────────────────────────────
+const BTN_NAMES = [
+  {key: 'green',      label: 'Green Fret',       color: 'var(--green)'},
+  {key: 'red',        label: 'Red Fret',         color: 'var(--red)'},
+  {key: 'yellow',     label: 'Yellow Fret',      color: 'var(--yellow)'},
+  {key: 'blue',       label: 'Blue Fret',        color: 'var(--blue)'},
+  {key: 'orange',     label: 'Orange Fret',      color: 'var(--orange)'},
+  {key: 'strum_up',   label: 'Strum Up',         color: '#fff'},
+  {key: 'strum_down', label: 'Strum Down',       color: '#fff'},
+  {key: 'start',      label: 'Start',            color: '#888'},
+  {key: 'select',     label: 'Select',           color: '#888'},
+  {key: 'dpad_up',    label: 'D-Pad Up',         color: '#888'},
+  {key: 'dpad_down',  label: 'D-Pad Down',       color: '#888'},
+  {key: 'dpad_left',  label: 'D-Pad Left',       color: '#888'},
+  {key: 'dpad_right', label: 'D-Pad Right',      color: '#888'},
+  {key: 'menu',       label: 'Menu/Guide',       color: '#888'},
+  {key: 'tilt',       label: 'Tilt (Star Power)', color: 'var(--yellow)'},
+];
+
+function populateButtonMap() {
+  const tbody = document.querySelector('#btnMapTable tbody');
+  tbody.innerHTML = '';
+  BTN_NAMES.forEach((btn, i) => {
+    const val = state.config.buttonMap[i];
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td><span class="color-chip" style="background:' + btn.color + '"></span>' + btn.label + '</td>' +
+      '<td><span style="font-size:11px;color:var(--muted)">' + btn.key + '</span></td>' +
+      '<td><input type="number" min="0" max="255" value="' + val + '" data-idx="' + i + '" class="mapInput" style="width:80px"></td>' +
+      '<td style="font-size:11px;color:var(--muted)">' + (val === 255 ? 'hat/unused' : '') + '</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+document.getElementById('btnApplyMap').addEventListener('click', () => {
+  document.querySelectorAll('.mapInput').forEach(inp => {
+    const i = parseInt(inp.dataset.idx);
+    const v = parseInt(inp.value);
+    state.config.buttonMap[i] = isNaN(v) ? 255 : Math.max(0, Math.min(255, v));
+    sendCmd({cmd: 'set_button_map', button: BTN_NAMES[i].key, action: state.config.buttonMap[i]});
+  });
+});
+
+document.getElementById('btnSaveMap').addEventListener('click', () => {
+  document.getElementById('btnApplyMap').click();
+  setTimeout(() => sendCmd({cmd: 'save_config'}), BTN_NAMES.length * 50 + 200);
+});
+
+// ── Whammy Panel ─────────────────────────────────────────────────────────────
+function populateWhammyPanel() {
+  document.getElementById('whammyMin').value  = state.config.whammyMin;
+  document.getElementById('whammyMax').value  = state.config.whammyMax;
+  document.getElementById('whammyDead').value = state.config.whammyDeadzone;
+  document.getElementById('whammyMinVal').textContent  = state.config.whammyMin;
+  document.getElementById('whammyMaxVal').textContent  = state.config.whammyMax;
+  document.getElementById('whammyDeadVal').textContent = state.config.whammyDeadzone;
+}
+
+['whammyMin', 'whammyMax', 'whammyDead'].forEach(id => {
+  const inp = document.getElementById(id);
+  const valId = id + 'Val';
+  inp.addEventListener('input', () => {
+    document.getElementById(valId).textContent = inp.value;
+  });
+});
+
+document.getElementById('btnApplyWhammy').addEventListener('click', () => {
+  const mn = parseInt(document.getElementById('whammyMin').value);
+  const mx = parseInt(document.getElementById('whammyMax').value);
+  const dz = parseInt(document.getElementById('whammyDead').value);
+  state.config.whammyMin = mn;
+  state.config.whammyMax = mx;
+  state.config.whammyDeadzone = dz;
+  sendCmd({cmd: 'set_whammy_range', min: mn, max: mx});
+  sendCmd({cmd: 'set_whammy_deadzone', deadzone: dz});
+});
+
+document.getElementById('btnCalibrateWhammy').addEventListener('click', () => {
+  sendCmd({cmd: 'calibrate_whammy'});
+  document.getElementById('calibrateStatus').textContent = 'Move whammy bar fully for 5 seconds\u2026';
+  setTimeout(() => {
+    sendCmd({cmd: 'get_config'});
+    document.getElementById('calibrateStatus').textContent = 'Calibration complete \u2014 config refreshed.';
+  }, 6000);
+});
+
+document.getElementById('btnSaveWhammy').addEventListener('click', () => {
+  document.getElementById('btnApplyWhammy').click();
+  setTimeout(() => sendCmd({cmd: 'save_config'}), 300);
+});
+
+// ── Settings Panel ───────────────────────────────────────────────────────────
+function populateSettingsPanel() {
+  const modes = ['hid_pc', 'hid_ps3', 'xinput'];
+  document.getElementById('modeSelect').value = modes[state.config.mode] || 'hid_pc';
+  document.getElementById('tiltInvert').checked = !!state.config.tiltInvert;
+}
+
+document.getElementById('btnSetMode').addEventListener('click', () => {
+  const m = document.getElementById('modeSelect').value;
+  sendCmd({cmd: 'set_mode', mode: m});
+});
+
+document.getElementById('btnSetTilt').addEventListener('click', () => {
+  const inv = document.getElementById('tiltInvert').checked;
+  state.config.tiltInvert = inv;
+  sendCmd({cmd: 'set_tilt_invert', invert: inv});
+});
+
+document.getElementById('btnFactoryReset').addEventListener('click', () => {
+  if (!confirm('Factory reset will erase all settings. Continue?')) return;
+  sendCmd({cmd: 'factory_reset'});
+});
+
+document.getElementById('btnReboot').addEventListener('click', () => {
+  sendCmd({cmd: 'reboot'});
+});
+
+// ── Footer ───────────────────────────────────────────────────────────────────
+document.getElementById('btnSave').addEventListener('click', () => {
+  sendCmd({cmd: 'save_config'});
+});
+
+document.getElementById('btnGetConfig').addEventListener('click', () => {
+  sendCmd({cmd: 'get_config'});
+});
+
+document.getElementById('btnClearLog').addEventListener('click', () => {
+  document.getElementById('log').innerHTML = '';
+});
+
+// ── Tab switching ────────────────────────────────────────────────────────────
+document.getElementById('tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  tab.classList.add('active');
+  const panel = document.getElementById('panel-' + tab.dataset.panel);
+  if (panel) panel.classList.add('active');
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+populateLEDPanel();
+populateButtonMap();
+populateWhammyPanel();
+populateSettingsPanel();
+</script>
+</body>
+</html>
