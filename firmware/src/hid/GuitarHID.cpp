@@ -2,9 +2,10 @@
 
 #ifndef XINPUT_MODE
 
-// USB HID descriptor for a gamepad:
-//   14 buttons, 1 hat switch (4-bit), whammy axis (8-bit), tilt axis (8-bit)
-static const uint8_t _hidDescriptor[] PROGMEM = {
+// Custom HID descriptor — Guitar Hero compatible gamepad:
+//   14 buttons, 1 hat switch (4-bit + 4-bit padding), whammy (8-bit), tilt (8-bit)
+// Total report size: 5 bytes
+static const uint8_t _hidDescriptor[] = {
     0x05, 0x01,       // Usage Page (Generic Desktop)
     0x09, 0x05,       // Usage (Gamepad)
     0xA1, 0x01,       // Collection (Application)
@@ -24,7 +25,7 @@ static const uint8_t _hidDescriptor[] PROGMEM = {
     0x95, 0x01,       //   Report Count (1)
     0x81, 0x03,       //   Input (Constant)
 
-    // Hat switch (4-bit, values 0-7 for directions, 8=no press)
+    // Hat switch (4-bit, values 0-7 for directions, 8=no press via null state)
     0x05, 0x01,       //   Usage Page (Generic Desktop)
     0x09, 0x39,       //   Usage (Hat Switch)
     0x15, 0x00,       //   Logical Minimum (0)
@@ -41,16 +42,16 @@ static const uint8_t _hidDescriptor[] PROGMEM = {
     0x95, 0x01,       //   Report Count (1)
     0x81, 0x03,       //   Input (Constant)
 
-    // Whammy axis (8-bit)
-    0x09, 0x30,       //   Usage (X)  — repurposed for whammy
+    // Whammy axis (8-bit, Usage X repurposed)
+    0x09, 0x30,       //   Usage (X)
     0x15, 0x00,       //   Logical Minimum (0)
     0x26, 0xFF, 0x00, //   Logical Maximum (255)
     0x75, 0x08,       //   Report Size (8)
     0x95, 0x01,       //   Report Count (1)
     0x81, 0x02,       //   Input (Data, Variable, Absolute)
 
-    // Tilt axis (8-bit)
-    0x09, 0x31,       //   Usage (Y)  — repurposed for tilt
+    // Tilt axis (8-bit, Usage Y repurposed)
+    0x09, 0x31,       //   Usage (Y)
     0x15, 0x00,       //   Logical Minimum (0)
     0x26, 0xFF, 0x00, //   Logical Maximum (255)
     0x75, 0x08,       //   Report Size (8)
@@ -60,15 +61,24 @@ static const uint8_t _hidDescriptor[] PROGMEM = {
     0xC0              // End Collection
 };
 
-static HIDSubDescriptor _hidNode(_hidDescriptor, sizeof(_hidDescriptor));
-
 void GuitarHID::begin() {
-    HID().AppendDescriptor(&_hidNode);
+    _usb_hid.setReportDescriptor(_hidDescriptor, sizeof(_hidDescriptor));
+    _usb_hid.setPollInterval(4);  // 4 ms poll interval (250 Hz)
+    _usb_hid.setBootProtocol(HID_ITF_PROTOCOL_NONE);
+    _usb_hid.begin();
+
+    // Wait until the USB host has enumerated the device (up to 2 s).
+    // This prevents sending reports before the host is ready.
+    uint32_t t = millis();
+    while (!TinyUSBDevice.mounted() && (millis() - t) < 2000) {
+        yield();
+    }
 }
 
 void GuitarHID::sendReport(uint16_t buttons, uint8_t hat, uint8_t whammy, uint8_t tilt) {
-    // Hat: HID standard uses 0-7 for 8 directions, 8 = centred.
-    // We clamp to 4 bits; value 8 is treated as null state by the descriptor.
+    if (!_usb_hid.ready()) return;
+
+    // Hat: descriptor null-state covers values 8+; clamp for safety.
     uint8_t hatNibble = (hat > 8) ? 8 : hat;
 
     _report.buttons = buttons;
@@ -76,7 +86,7 @@ void GuitarHID::sendReport(uint16_t buttons, uint8_t hat, uint8_t whammy, uint8_
     _report.whammy  = whammy;
     _report.tilt    = tilt;
 
-    HID().SendReport(0, &_report, sizeof(_report));
+    _usb_hid.sendReport(0, &_report, sizeof(_report));
 }
 
 #endif // XINPUT_MODE

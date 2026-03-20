@@ -1,6 +1,6 @@
 #include "ConfigManager.h"
 
-static const CRGB DEFAULT_LED_COLOURS[8] PROGMEM = {
+static const CRGB DEFAULT_LED_COLOURS[8] = {
     CRGB(0, 255, 0),
     CRGB(255, 0, 0),
     CRGB(255, 255, 0),
@@ -44,6 +44,10 @@ void ConfigManager::loadDefaults() {
 }
 
 void ConfigManager::begin() {
+    // RP2040 EEPROM emulation requires begin() before any access.
+    // Size must be at least sizeof(GuitarConfig); 256 bytes gives future headroom.
+    EEPROM.begin(256);
+
     uint8_t magic;
     EEPROM.get(0, magic);
 
@@ -57,6 +61,7 @@ void ConfigManager::begin() {
 
 void ConfigManager::save() {
     EEPROM.put(0, _config);
+    EEPROM.commit();  // RP2040: flush in-memory EEPROM buffer to flash
 }
 
 void ConfigManager::reset() {

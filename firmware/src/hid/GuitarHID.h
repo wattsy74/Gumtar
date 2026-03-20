@@ -3,11 +3,11 @@
 
 #ifndef XINPUT_MODE
 
-#include <HID.h>
+#include <Adafruit_TinyUSB.h>
 
-// HID report structure:
-//   bytes 0-1: button bitfield (14 buttons)
-//   byte  2  : hat switch (0=Up, 2=Right, 4=Down, 6=Left, diagonals, 8=None)
+// HID report structure — must match the custom HID descriptor below:
+//   bytes 0-1: button bitfield (14 buttons, top 2 bits always 0)
+//   byte  2  : hat switch (low nibble 0-8, high nibble 0 = padding)
 //   byte  3  : whammy axis (0-255)
 //   byte  4  : tilt axis (0-255)
 struct GuitarHIDReport {
@@ -23,7 +23,8 @@ public:
     void sendReport(uint16_t buttons, uint8_t hat, uint8_t whammy, uint8_t tilt);
 
 private:
-    GuitarHIDReport _report = {};
+    Adafruit_USBD_HID _usb_hid;
+    GuitarHIDReport   _report = {};
 };
 
 #else  // XINPUT_MODE
@@ -31,7 +32,7 @@ private:
 class GuitarHID {
 public:
     void begin() {}
-    void sendReport(uint16_t, uint8_t, uint8_t, uint8_t) {}  // no-op; XInput handled in main controller
+    void sendReport(uint16_t, uint8_t, uint8_t, uint8_t) {}  // no-op; XInput handled in GuitarController
 };
 
 #endif // XINPUT_MODE

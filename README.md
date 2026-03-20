@@ -1,10 +1,10 @@
 # Gumtar 🎸
 
-**Gumtar** is an open-source Arduino firmware and browser-based configurator for
-DIY guitar controllers. It turns an Arduino Pro Micro into a USB HID gamepad
-(PC, Mac, PS3) or Xbox 360 XInput device — complete with fret buttons, strum
-bar, whammy bar, tilt (star power), D-pad, and a WS2812B LED strip with
-animated effects.
+**Gumtar** is an open-source firmware and browser-based configurator for
+DIY guitar controllers. It runs on a **Raspberry Pi Pico (RP2040)** and
+presents as a USB HID gamepad (PC, Mac, PS3) or Xbox 360 XInput device —
+complete with fret buttons, strum bar, whammy bar, tilt (star power), D-pad,
+and a WS2812B LED strip with animated effects.
 
 ---
 
@@ -73,7 +73,7 @@ or use the [PlatformIO IDE](https://platformio.org/install/ide) extension for VS
 git clone https://github.com/your-org/Gumtar.git
 cd Gumtar/firmware
 pio run -e hid                       # build HID firmware
-pio run -e hid --target upload       # flash to connected Pro Micro
+pio run -e hid --target upload       # flash to connected Raspberry Pi Pico
 ```
 
 ### 3. Wire the hardware

@@ -1,96 +1,98 @@
 # Wiring Guide
 
-All connections refer to the **SparkFun Pro Micro 5 V (ATmega32U4)**. Pin numbers
-are the digital/analogue identifiers printed on the board, which match the
+All connections refer to the **Raspberry Pi Pico (RP2040)**. Pin numbers are
+the GP (GPIO) numbers labelled on the Pico board, which match the
 `firmware/src/pins.h` definitions.
+
+> **3.3 V logic notice:** The Pico's GPIOs operate at **3.3 V**. WS2812B LEDs
+> require a 5 V data signal. Insert a 74AHCT125 or SN74HCT245 level shifter
+> between GP17 and the LED strip data input. All button and switch inputs are
+> fine at 3.3 V — the internal pull-ups pull to 3.3 V and most switches are
+> passive (connected to GND when pressed).
 
 ---
 
 ## Fret Buttons (active LOW, internal pull-up)
 
-Wire one leg of each button to the listed pin and the other leg to **GND**.
+Wire one leg of each button to the listed GP pin and the other leg to **GND**.
 No external resistors needed — the firmware enables `INPUT_PULLUP`.
 
-| Button | Pro Micro Pin | Colour convention |
-|--------|---------------|-------------------|
-| Green  | `2`           | Green wire        |
-| Red    | `3`           | Red wire          |
-| Yellow | `4`           | Yellow wire       |
-| Blue   | `5`           | Blue wire         |
-| Orange | `6`           | Orange wire       |
+| Button | Pico Pin | GPIO |
+|--------|----------|------|
+| Green  | Pin 4    | GP2  |
+| Red    | Pin 5    | GP3  |
+| Yellow | Pin 6    | GP4  |
+| Blue   | Pin 7    | GP5  |
+| Orange | Pin 9    | GP6  |
 
 ---
 
 ## Strum Bar (active LOW)
 
-| Switch     | Pro Micro Pin | Notes                    |
-|------------|---------------|--------------------------|
-| Strum Up   | `7`           | Upper leaf/microswitch   |
-| Strum Down | `8`           | Lower leaf/microswitch   |
+| Switch     | Pico Pin | GPIO | Notes                   |
+|------------|----------|------|-------------------------|
+| Strum Up   | Pin 10   | GP7  | Upper leaf/microswitch  |
+| Strum Down | Pin 11   | GP8  | Lower leaf/microswitch  |
 
-Wire one contact to the pin, other to **GND**.
+Wire one contact to the GP pin, other to **GND**.
 
 ---
 
 ## System Buttons (active LOW)
 
-| Button | Pro Micro Pin |
-|--------|---------------|
-| Start  | `9`           |
-| Select | `10`          |
+| Button | Pico Pin | GPIO |
+|--------|----------|------|
+| Start  | Pin 12   | GP9  |
+| Select | Pin 14   | GP10 |
 
 ---
 
 ## D-Pad (active LOW)
 
-| Direction | Pro Micro Pin | AVR label |
-|-----------|---------------|-----------|
-| Up        | `14`          | MISO      |
-| Down      | `15`          | SCLK      |
-| Left      | `16`          | MOSI      |
-| Right     | `18` (A0)     | A0        |
-
-> Pins 14–16 are the SPI header pins on the Pro Micro; they work fine as GPIO.
+| Direction | Pico Pin | GPIO |
+|-----------|----------|------|
+| Up        | Pin 15   | GP11 |
+| Down      | Pin 16   | GP12 |
+| Left      | Pin 17   | GP13 |
+| Right     | Pin 19   | GP14 |
 
 ---
 
 ## Menu / Guide Button (active LOW)
 
-| Button | Pro Micro Pin | AVR label |
-|--------|---------------|-----------|
-| Menu   | `19` (A1)     | A1        |
+| Button | Pico Pin | GPIO |
+|--------|----------|------|
+| Menu   | Pin 20   | GP15 |
 
 ---
 
 ## Tilt Switch (active LOW)
 
-| Component    | Pro Micro Pin | AVR label |
-|--------------|---------------|-----------|
-| Tilt (SW-200D) | `20` (A2)   | A2        |
-
-Wire one leg to the pin, other leg to **GND**. Mount the switch so it closes
-when the guitar neck tilts upward.
+| Component      | Pico Pin | GPIO | Notes                                             |
+|----------------|----------|------|---------------------------------------------------|
+| Tilt (SW-200D) | Pin 21   | GP16 | Wire one leg to GP16, other to GND. Mount so the switch closes when the guitar neck tilts upward. |
 
 ---
 
 ## Whammy Potentiometer (analog)
 
-The potentiometer acts as a voltage divider between VCC and GND.
+The potentiometer acts as a voltage divider between 3.3 V and GND.
 
 ```
-Pro Micro VCC (5V) ──┬── Pot leg 1 (one end)
-                     │
-                     ├── Pot wiper ──→ Pin A3 (21)
-                     │
-Pro Micro GND ───────┴── Pot leg 3 (other end)
+Pico 3V3 (Pin 36) ──┬── Pot leg 1 (one end)
+                    │
+                    ├── Pot wiper ──→ GP26 / A0 (Pin 31)
+                    │
+Pico GND (Pin 38) ──┴── Pot leg 3 (other end)
 ```
 
-| Connection   | Pro Micro Pin | Notes                    |
-|--------------|---------------|--------------------------|
-| Pot wiper    | `A3` (21)     | Centre pin of pot        |
-| Pot end 1    | `VCC` (5 V)   | One outer pin of pot     |
-| Pot end 2    | `GND`         | Other outer pin of pot   |
+| Connection | Pico Pin | GPIO / Net | Notes                |
+|------------|----------|------------|----------------------|
+| Pot wiper  | Pin 31   | GP26 (A0)  | Centre pin of pot    |
+| Pot end 1  | Pin 36   | 3V3        | One outer pin of pot |
+| Pot end 2  | Pin 38   | GND        | Other outer pin      |
 
+`analogRead()` returns 0–1023 (10-bit) by default with the arduino-pico core.
 Use the **Auto Calibrate** feature in the web app after wiring to set the
 exact min/max ADC values for your specific potentiometer travel.
 
@@ -98,61 +100,62 @@ exact min/max ADC values for your specific potentiometer travel.
 
 ## WS2812B LED Strip / Ring
 
+> **Level shifter required.** The RP2040 outputs 3.3 V; WS2812B requires
+> ≥ 3.5 V on the data line. A 74AHCT125 (or equivalent) between GP17 and
+> the strip's DI pin ensures reliable operation.
+
 ```
-Pro Micro 5V ─────────────────┬───── LED strip VCC (5V)
-                              │
-                    1000 µF cap (across VCC/GND of strip)
-                              │
-Pro Micro GND ────────────────┴───── LED strip GND
+Pico VSYS (Pin 39) ───────────────────┬───── LED strip VCC (5 V from USB)
+                                      │
+                            1000 µF cap (across VCC/GND of strip)
+                                      │
+Pico GND (Pin 38) ────────────────────┴───── LED strip GND
 
-Pro Micro Pin A4 (22) ──[330Ω]──── LED strip Data In (DI)
+Pico GP17 (Pin 22) ──[74AHCT125]──[330 Ω]──── LED strip Data In (DI)
 ```
 
-| Connection   | Pro Micro Pin | Notes                                    |
-|--------------|---------------|------------------------------------------|
-| Data In (DI) | `A4` (22)     | Via 300–500 Ω series resistor            |
-| VCC          | `VCC` (5 V)   | Add 1000 µF cap across VCC/GND near LEDs |
-| GND          | `GND`         | Common ground                            |
+| Connection    | Pico Pin | GPIO  | Notes                                     |
+|---------------|----------|-------|-------------------------------------------|
+| Data In (DI)  | Pin 22   | GP17  | Via level shifter then 300–500 Ω resistor |
+| VCC           | Pin 39   | VSYS  | 5 V from USB (through Pico regulator path)|
+| GND           | Pin 38   | GND   | Common ground                             |
 
-> **Important:** The 300–500 Ω series resistor on the data line prevents ringing
-> and protects the first LED from overvoltage spikes. The 1000 µF bulk capacitor
-> absorbs the inrush current when LEDs switch on and prevents voltage sag that
-> can crash the microcontroller.
-
-> **Note:** Pin `A4` (22) is also the I2C SDA pin on the Pro Micro. It is fully
-> usable as a digital output when I2C is not in use. FastLED's template pin
-> argument is set to this pin at compile time.
+> **Important:** The 300–500 Ω series resistor on the data line prevents
+> ringing and protects the first LED from overvoltage spikes. The 1000 µF
+> bulk capacitor absorbs inrush current when LEDs switch on.
 
 ---
 
 ## Full Pin Summary
 
-| Pin      | Function           | Direction | Pull-up |
-|----------|--------------------|-----------|---------|
-| `2`      | Fret Green         | Input     | Yes     |
-| `3`      | Fret Red           | Input     | Yes     |
-| `4`      | Fret Yellow        | Input     | Yes     |
-| `5`      | Fret Blue          | Input     | Yes     |
-| `6`      | Fret Orange        | Input     | Yes     |
-| `7`      | Strum Up           | Input     | Yes     |
-| `8`      | Strum Down         | Input     | Yes     |
-| `9`      | Start              | Input     | Yes     |
-| `10`     | Select             | Input     | Yes     |
-| `14`     | D-Pad Up           | Input     | Yes     |
-| `15`     | D-Pad Down         | Input     | Yes     |
-| `16`     | D-Pad Left         | Input     | Yes     |
-| `18 / A0`| D-Pad Right        | Input     | Yes     |
-| `19 / A1`| Menu/Guide         | Input     | Yes     |
-| `20 / A2`| Tilt switch        | Input     | Yes     |
-| `A3 / 21`| Whammy pot wiper   | Analog in | No      |
-| `A4 / 22`| WS2812B Data       | Output    | No      |
+| Pico Pin | GPIO  | Function           | Direction | Pull-up |
+|----------|-------|--------------------|-----------|---------|
+| 4        | GP2   | Fret Green         | Input     | Yes     |
+| 5        | GP3   | Fret Red           | Input     | Yes     |
+| 6        | GP4   | Fret Yellow        | Input     | Yes     |
+| 7        | GP5   | Fret Blue          | Input     | Yes     |
+| 9        | GP6   | Fret Orange        | Input     | Yes     |
+| 10       | GP7   | Strum Up           | Input     | Yes     |
+| 11       | GP8   | Strum Down         | Input     | Yes     |
+| 12       | GP9   | Start              | Input     | Yes     |
+| 14       | GP10  | Select             | Input     | Yes     |
+| 15       | GP11  | D-Pad Up           | Input     | Yes     |
+| 16       | GP12  | D-Pad Down         | Input     | Yes     |
+| 17       | GP13  | D-Pad Left         | Input     | Yes     |
+| 19       | GP14  | D-Pad Right        | Input     | Yes     |
+| 20       | GP15  | Menu/Guide         | Input     | Yes     |
+| 21       | GP16  | Tilt switch        | Input     | Yes     |
+| 22       | GP17  | WS2812B Data       | Output    | No      |
+| 31       | GP26 (A0) | Whammy pot wiper | Analog in | No   |
 
 ---
 
 ## Grounding Notes
 
-- Use a **star ground** topology: run separate GND wires from the Pro Micro GND
-  pin to each button cluster, the whammy pot, and the LED strip GND. Join them
-  at the Pro Micro GND pin rather than daisy-chaining.
-- Keep the WS2812B data wire short and away from the analog whammy wire to
-  minimise noise pickup on the ADC.
+- Use a **star ground** topology: run separate GND wires from a Pico GND pin
+  to each button cluster, the whammy pot, and the LED strip GND. Join them
+  at the Pico GND pin rather than daisy-chaining.
+- Keep the WS2812B data wire short and routed away from the analog whammy
+  wire to minimise noise pickup on the ADC.
+- The Pico has multiple GND pins (3, 8, 13, 18, 23, 28, 33, 38); use the
+  nearest one for each group of components.
