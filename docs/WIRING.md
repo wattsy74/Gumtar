@@ -2,11 +2,11 @@
 
 All connections refer to the **Raspberry Pi Pico (RP2040)**. Pin numbers are
 the GP (GPIO) numbers labelled on the Pico board, which match the
-`firmware/src/pins.h` definitions.
+`firmware/src/pins.h` definitions and the production PCB layout.
 
 > **3.3 V logic notice:** The Pico's GPIOs operate at **3.3 V**. WS2812B LEDs
 > require a 5 V data signal. Insert a 74AHCT125 or SN74HCT245 level shifter
-> between GP17 and the LED strip data input. All button and switch inputs are
+> between GP13 and the LED strip data input. All button and switch inputs are
 > fine at 3.3 V — the internal pull-ups pull to 3.3 V and most switches are
 > passive (connected to GND when pressed).
 
@@ -31,8 +31,8 @@ No external resistors needed — the firmware enables `INPUT_PULLUP`.
 
 | Switch     | Pico Pin | GPIO | Notes                   |
 |------------|----------|------|-------------------------|
-| Strum Up   | Pin 10   | GP7  | Upper leaf/microswitch  |
-| Strum Down | Pin 11   | GP8  | Lower leaf/microswitch  |
+| Strum Up   | Pin 20   | GP15 | Upper leaf/microswitch  |
+| Strum Down | Pin 19   | GP14 | Lower leaf/microswitch  |
 
 Wire one contact to the GP pin, other to **GND**.
 
@@ -42,8 +42,8 @@ Wire one contact to the GP pin, other to **GND**.
 
 | Button | Pico Pin | GPIO |
 |--------|----------|------|
-| Start  | Pin 12   | GP9  |
-| Select | Pin 14   | GP10 |
+| Start  | Pin 1    | GP0  |
+| Select | Pin 2    | GP1  |
 
 ---
 
@@ -52,9 +52,9 @@ Wire one contact to the GP pin, other to **GND**.
 | Direction | Pico Pin | GPIO |
 |-----------|----------|------|
 | Up        | Pin 15   | GP11 |
-| Down      | Pin 16   | GP12 |
-| Left      | Pin 17   | GP13 |
-| Right     | Pin 19   | GP14 |
+| Down      | Pin 14   | GP10 |
+| Left      | Pin 12   | GP9  |
+| Right     | Pin 11   | GP8  |
 
 ---
 
@@ -62,7 +62,7 @@ Wire one contact to the GP pin, other to **GND**.
 
 | Button | Pico Pin | GPIO |
 |--------|----------|------|
-| Menu   | Pin 20   | GP15 |
+| Menu   | Pin 10   | GP7  |
 
 ---
 
@@ -70,7 +70,7 @@ Wire one contact to the GP pin, other to **GND**.
 
 | Component      | Pico Pin | GPIO | Notes                                             |
 |----------------|----------|------|---------------------------------------------------|
-| Tilt (SW-200D) | Pin 21   | GP16 | Wire one leg to GP16, other to GND. Mount so the switch closes when the guitar neck tilts upward. |
+| Tilt (SW-200D) | Pin 16   | GP12 | Wire one leg to GP12, other to GND. Mount so the switch closes when the guitar neck tilts upward. |
 
 ---
 
@@ -81,16 +81,16 @@ The potentiometer acts as a voltage divider between 3.3 V and GND.
 ```
 Pico 3V3 (Pin 36) ──┬── Pot leg 1 (one end)
                     │
-                    ├── Pot wiper ──→ GP26 / A0 (Pin 31)
+                    ├── Pot wiper ──→ GP29 / A3 (Pin 35)
                     │
-Pico GND (Pin 38) ──┴── Pot leg 3 (other end)
+Pico GND (Pin 33) ──┴── Pot leg 3 (other end)
 ```
 
 | Connection | Pico Pin | GPIO / Net | Notes                |
 |------------|----------|------------|----------------------|
-| Pot wiper  | Pin 31   | GP26 (A0)  | Centre pin of pot    |
+| Pot wiper  | Pin 35   | GP29 (A3)  | Centre pin of pot    |
 | Pot end 1  | Pin 36   | 3V3        | One outer pin of pot |
-| Pot end 2  | Pin 38   | GND        | Other outer pin      |
+| Pot end 2  | Pin 33   | GND        | Other outer pin      |
 
 `analogRead()` returns 0–1023 (10-bit) by default with the arduino-pico core.
 Use the **Auto Calibrate** feature in the web app after wiring to set the
@@ -101,7 +101,7 @@ exact min/max ADC values for your specific potentiometer travel.
 ## WS2812B LED Strip / Ring
 
 > **Level shifter required.** The RP2040 outputs 3.3 V; WS2812B requires
-> ≥ 3.5 V on the data line. A 74AHCT125 (or equivalent) between GP17 and
+> ≥ 3.5 V on the data line. A 74AHCT125 (or equivalent) between GP13 and
 > the strip's DI pin ensures reliable operation.
 
 ```
@@ -111,12 +111,12 @@ Pico VSYS (Pin 39) ───────────────────┬�
                                       │
 Pico GND (Pin 38) ────────────────────┴───── LED strip GND
 
-Pico GP17 (Pin 22) ──[74AHCT125]──[330 Ω]──── LED strip Data In (DI)
+Pico GP13 (Pin 17) ──[74AHCT125]──[330 Ω]──── LED strip Data In (DI)
 ```
 
 | Connection    | Pico Pin | GPIO  | Notes                                     |
 |---------------|----------|-------|-------------------------------------------|
-| Data In (DI)  | Pin 22   | GP17  | Via level shifter then 300–500 Ω resistor |
+| Data In (DI)  | Pin 17   | GP13  | Via level shifter then 300–500 Ω resistor |
 | VCC           | Pin 39   | VSYS  | 5 V from USB (through Pico regulator path)|
 | GND           | Pin 38   | GND   | Common ground                             |
 
@@ -128,25 +128,25 @@ Pico GP17 (Pin 22) ──[74AHCT125]──[330 Ω]──── LED strip Data In
 
 ## Full Pin Summary
 
-| Pico Pin | GPIO  | Function           | Direction | Pull-up |
-|----------|-------|--------------------|-----------|---------|
-| 4        | GP2   | Fret Green         | Input     | Yes     |
-| 5        | GP3   | Fret Red           | Input     | Yes     |
-| 6        | GP4   | Fret Yellow        | Input     | Yes     |
-| 7        | GP5   | Fret Blue          | Input     | Yes     |
-| 9        | GP6   | Fret Orange        | Input     | Yes     |
-| 10       | GP7   | Strum Up           | Input     | Yes     |
-| 11       | GP8   | Strum Down         | Input     | Yes     |
-| 12       | GP9   | Start              | Input     | Yes     |
-| 14       | GP10  | Select             | Input     | Yes     |
-| 15       | GP11  | D-Pad Up           | Input     | Yes     |
-| 16       | GP12  | D-Pad Down         | Input     | Yes     |
-| 17       | GP13  | D-Pad Left         | Input     | Yes     |
-| 19       | GP14  | D-Pad Right        | Input     | Yes     |
-| 20       | GP15  | Menu/Guide         | Input     | Yes     |
-| 21       | GP16  | Tilt switch        | Input     | Yes     |
-| 22       | GP17  | WS2812B Data       | Output    | No      |
-| 31       | GP26 (A0) | Whammy pot wiper | Analog in | No   |
+| Pico Pin | GPIO      | Function           | Direction | Pull-up |
+|----------|-----------|--------------------|-----------|---------|
+| 1        | GP0       | Start              | Input     | Yes     |
+| 2        | GP1       | Select             | Input     | Yes     |
+| 4        | GP2       | Fret Green         | Input     | Yes     |
+| 5        | GP3       | Fret Red           | Input     | Yes     |
+| 6        | GP4       | Fret Yellow        | Input     | Yes     |
+| 7        | GP5       | Fret Blue          | Input     | Yes     |
+| 9        | GP6       | Fret Orange        | Input     | Yes     |
+| 10       | GP7       | Menu/Guide         | Input     | Yes     |
+| 11       | GP8       | D-Pad Right        | Input     | Yes     |
+| 12       | GP9       | D-Pad Left         | Input     | Yes     |
+| 14       | GP10      | D-Pad Down         | Input     | Yes     |
+| 15       | GP11      | D-Pad Up           | Input     | Yes     |
+| 16       | GP12      | Tilt switch        | Input     | Yes     |
+| 17       | GP13      | WS2812B Data       | Output    | No      |
+| 19       | GP14      | Strum Down         | Input     | Yes     |
+| 20       | GP15      | Strum Up           | Input     | Yes     |
+| 35       | GP29 (A3) | Whammy pot wiper   | Analog in | No      |
 
 ---
 

@@ -2,7 +2,7 @@
 #include "../pins.h"
 
 // FastLED requires a compile-time pin — we use a template wrapper.
-// The actual data pin is PIN_LED (GP17 on Raspberry Pi Pico).
+// The actual data pin is PIN_LED (GP13 on the production PCB).
 static CRGB _ledBuffer[LEDManager::MAX_LEDS];
 
 void LEDManager::begin(uint8_t numLeds) {
