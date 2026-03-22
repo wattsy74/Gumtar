@@ -34,7 +34,7 @@ constexpr uint8_t PIN_BTN_MENU    = 7;   // GP7
 constexpr uint8_t PIN_TILT        = 12;  // GP12
 
 // WS2812B LED data
-constexpr uint8_t PIN_LED         = 13;  // GP13
+constexpr uint8_t PIN_LED_DATA         = 13;  // GP13
 
 // Whammy potentiometer (analog) — RP2040 ADC3 = GP29 = A3
 // analogRead() returns 0–1023 (10-bit) with the arduino-pico core defaults.
